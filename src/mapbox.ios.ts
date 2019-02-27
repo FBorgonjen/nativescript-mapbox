@@ -317,6 +317,30 @@ export class Mapbox extends MapboxCommon implements MapboxApi {
     });
   }
 
+  updateMarkerResource(markerId: number, newResource: string, nativeMap?: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      try {
+        const theMap: MGLMapView = nativeMap || _mapbox.mapView;
+        const markerToUpdate: MapboxMarker = _markers.find((marker: MapboxMarker) => marker.id && marker.id === markerId);
+
+        if (markerToUpdate) {
+          theMap.removeAnnotation(markerToUpdate.ios);
+          // Clear icon settings in marker and re-add it!
+          (markerToUpdate as any).iconDownloaded = null;
+          (markerToUpdate as any).reuseIdentifier = null;
+          markerToUpdate.icon = newResource;
+          _addMarkers([markerToUpdate], theMap);
+          resolve();
+        } else {
+          reject(`Marker with id[${markerId}] not found`);
+        }
+      } catch (ex) {
+        console.log(`Error in mapbox.updateMarkerResource: ${ex}`);
+        reject(ex);
+      }
+    });
+  }
+
   setCenter(options: SetCenterOptions, nativeMap?): Promise<any> {
     return new Promise((resolve, reject) => {
       try {
@@ -776,6 +800,27 @@ export class Mapbox extends MapboxCommon implements MapboxApi {
     return Promise.reject("'setOnCameraIdleListener' not currently supported on iOS");
   }
 
+  setOnMapChangeListener(listener: (data: number) => void, nativeMap?: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      try {
+        let theMap: MGLMapView = nativeMap || _mapbox.mapView;
+
+        if (!theMap) {
+          reject("No map has been loaded");
+          return;
+        }
+
+        const delegate: MGLMapViewDelegateImpl = theMap.delegate as MGLMapViewDelegateImpl;
+        delegate.setMapViewDidChangeCallback(listener);
+
+        resolve();
+      } catch (ex) {
+        console.log("Error in mapbox.setOnMapChangeListener: " + ex);
+        reject(ex);
+      }
+    });
+  }
+
   getViewport(nativeMap?): Promise<Viewport> {
     return new Promise((resolve, reject) => {
       try {
@@ -1152,6 +1197,7 @@ class MGLMapViewDelegateImpl extends NSObject implements MGLMapViewDelegate {
   }
 
   private mapLoadedCallback: (mapView: MGLMapView) => void;
+  private mapViewDidChangeCallback: (data: number) => void;
 
   public initWithCallback(mapLoadedCallback: (mapView: MGLMapView) => void): MGLMapViewDelegateImpl {
     this.mapLoadedCallback = mapLoadedCallback;
@@ -1258,6 +1304,17 @@ class MGLMapViewDelegateImpl extends NSObject implements MGLMapViewDelegate {
           cached.subtitle == tapped.subtitle) {
         return cached;
       }
+    }
+  }
+
+  setMapViewDidChangeCallback(mapViewDidChangeCallback: (data: number) => void): MGLMapViewDelegateImpl {
+    this.mapViewDidChangeCallback = mapViewDidChangeCallback;
+    return this;
+  }
+
+  mapViewRegionDidChangeAnimated(mapView: MGLMapView, animated: boolean) {
+    if (this.mapViewDidChangeCallback !== undefined) {
+      this.mapViewDidChangeCallback(animated ? 4 : 3); // REGION_DID_CHANGE_ANIMATED || REGION_DID_CHANGE
     }
   }
 }

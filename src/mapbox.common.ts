@@ -342,6 +342,8 @@ export interface MapboxApi {
 
   removeMarkers(options?: any, nativeMap?: any): Promise<any>;
 
+  updateMarkerResource(id: number, res: string, nativeMap?: any): Promise<any>;
+
   setCenter(options: SetCenterOptions, nativeMap?: any): Promise<any>;
 
   getCenter(nativeMap?: any): Promise<LatLng>;
@@ -373,6 +375,8 @@ export interface MapboxApi {
   setOnMapClickListener(listener: (data: LatLng) => void, nativeMap?): Promise<any>;
 
   setOnMapLongClickListener(listener: (data: LatLng) => void, nativeMap?): Promise<any>;
+
+  setOnMapChangeListener(listener: (data: number) => void, nativeMap?: any): Promise<any>;
 
   setOnScrollListener(listener: (data?: LatLng) => void, nativeMap?: any): Promise<void>;
 
@@ -463,11 +467,15 @@ export interface MapboxViewApi {
 
   removeMarkers(options?: any): Promise<any>;
 
+  updateMarkerResource(id: number, res: string): Promise<any>;
+
   queryRenderedFeatures(options: QueryRenderedFeaturesOptions): Promise<Array<Feature>>;
 
   setOnMapClickListener(listener: (data: LatLng) => void): Promise<any>;
 
   setOnMapLongClickListener(listener: (data: LatLng) => void): Promise<any>;
+
+  setOnMapChangeListener(listener: (data: number) => void): Promise<any>;
 
   setOnScrollListener(listener: (data?: LatLng) => void): Promise<void>;
 
@@ -529,12 +537,20 @@ export abstract class MapboxViewCommonBase extends ContentView implements Mapbox
     return this.mapbox.removeMarkers(options, this.getNativeMapView());
   }
 
+  updateMarkerResource(id: number, res: string): Promise<any> {
+    return this.mapbox.updateMarkerResource(id, res, this.getNativeMapView());
+  }
+
   setOnMapClickListener(listener: (data: LatLng) => void): Promise<any> {
     return this.mapbox.setOnMapClickListener(listener, this.getNativeMapView());
   }
 
   setOnMapLongClickListener(listener: (data: LatLng) => void): Promise<any> {
     return this.mapbox.setOnMapLongClickListener(listener, this.getNativeMapView());
+  }
+
+  setOnMapChangeListener(listener: (data: number) => void): Promise<any> {
+    return this.mapbox.setOnMapChangeListener(listener, this.getNativeMapView());
   }
 
   setOnScrollListener(listener: (data?: LatLng) => void, nativeMap?: any): Promise<void> {

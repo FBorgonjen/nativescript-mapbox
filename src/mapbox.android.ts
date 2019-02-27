@@ -431,6 +431,33 @@ const _removeMarkers = (ids?, nativeMap?) => {
   }
 };
 
+const _updateMarkerIcon = (markerId, newResource, nativeMap?): void => {
+  const theMap: any = nativeMap || _mapbox.mapView;
+  const markerToUpdate: MapboxMarker = _markers.find((marker: MapboxMarker) => marker.id && marker.id === markerId);
+  if (!theMap || !theMap.mapboxMap || !markerToUpdate) {
+    return;
+  }
+  markerToUpdate.icon = newResource;
+  (markerToUpdate as any).iconDownloaded = null;
+  const iconFactory: any = com.mapbox.mapboxsdk.annotations.IconFactory.getInstance(application.android.context);
+  if (newResource.startsWith('res://')) {
+    const resourceName: string = newResource.substring(6);
+    const resource: any = utils.ad.getApplicationContext().getResources();
+    const identifier: any = resource.getIdentifier(resourceName, 'drawable', utils.ad.getApplication().getPackageName());
+    if (identifier === 0) {
+      console.info(`No icon found for this device density for icon ' ${newResource}'. Falling back to the default icon.`);
+    } else {
+      markerToUpdate.android.setIcon(iconFactory.fromResource(identifier));
+    }
+  } else if (newResource.startsWith('http')) {
+    if ((markerToUpdate as any).iconDownloaded !== null) {
+      markerToUpdate.android.setIcon(iconFactory.fromBitmap((markerToUpdate as any).iconDownloaded));
+    }
+  } else {
+    console.warn('Please use res://resourcename, http(s)://imageurl or iconPath to use a local path');
+  }
+};
+
 const _getRegionName = (offlineRegion) => {
   const metadata = offlineRegion.getMetadata();
   const jsonStr = new java.lang.String(metadata, "UTF-8");
@@ -663,6 +690,18 @@ export class Mapbox extends MapboxCommon implements MapboxApi {
         resolve();
       } catch (ex) {
         console.log("Error in mapbox.removeMarkers: " + ex);
+        reject(ex);
+      }
+    });
+  }
+
+  public updateMarkerIcon(markerId: number, resource: string, nativeMap?: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      try {
+        _updateMarkerIcon(markerId, resource, nativeMap);
+        resolve();
+      } catch (ex) {
+        console.error(`Error in mapbox.updateMarkerIcon: ${ex}`);
         reject(ex);
       }
     });
@@ -1037,6 +1076,34 @@ export class Mapbox extends MapboxCommon implements MapboxApi {
         resolve();
       } catch (ex) {
         console.log("Error in mapbox.setOnMapLongClickListener: " + ex);
+        reject(ex);
+      }
+    });
+  }
+
+  public setOnMapChangeListener(listener: (data: number) => void, nativeMap?: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      try {
+        const theMap = nativeMap || _mapbox;
+
+        if (!theMap) {
+          reject('No map has been loaded');
+          return;
+        }
+
+        theMap.addOnMapChangedListener(
+          new com.mapbox.mapboxsdk.maps.MapView.OnMapChangedListener({
+            onMapChanged: (changeNr: number) => {
+              if (changeNr === 3 || changeNr === 4) { // REGION_DID_CHANGE || REGION_DID_CHANGE_ANIMATED
+                listener(changeNr);
+              }
+            }
+          })
+        );
+
+        resolve();
+      } catch (ex) {
+        console.error("Error in mapbox.setOnMapChangeListener: " + ex);
         reject(ex);
       }
     });
